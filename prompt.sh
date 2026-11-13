@@ -298,4 +298,7 @@ alias clear="command clear; unset __was_printed"
 
 ### Initialize
 
+# Load __git_ps1 (required by render_git)
+source /usr/share/git-core/contrib/completion/git-prompt.sh
+
 config && init
