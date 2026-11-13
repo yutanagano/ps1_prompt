@@ -16,10 +16,12 @@ config() {
     declare -g use_glyphs=true
     declare -g use_badges=true
 
-    # Define custom colors
-    declare -g color_primary="#f5992e"
-    declare -g color_secondary="#785cea"
-    declare -g color_neutral="#5f5f87"
+    # Define colors using ANSI indices (0-15) so the terminal's
+    # colorscheme is respected. Hex values (e.g. "#f5992e") are also
+    # accepted and rendered as truecolor, bypassing the colorscheme.
+    declare -g color_primary=11    # bright yellow
+    declare -g color_secondary=13  # bright magenta
+    declare -g color_neutral=8     # bright black
     declare -g color_global
 
     declare -g glyph_badge_left=""
@@ -182,18 +184,27 @@ render_prompt() {
 
 ### Helpers
 
-hex_to_ansi() {
-    local hex=${1#\#}
+color_to_ansi() {
+    local color=$1
     local include_bg=${2:-false}
+    local code
 
-    local r=$((16#${hex:0:2}))
-    local g=$((16#${hex:2:2}))
-    local b=$((16#${hex:4:2}))
+    if [[ $color =~ ^[0-9]+$ ]]; then
+        # ANSI index: themed by the terminal's colorscheme (0-15)
+        code="5;$color"
+    else
+        # Hex value: truecolor, not themed
+        local hex=${color#\#}
+        local r=$((16#${hex:0:2}))
+        local g=$((16#${hex:2:2}))
+        local b=$((16#${hex:4:2}))
+        code="2;$r;$g;$b"
+    fi
 
     if $include_bg; then
-        printf "30;48;2;%s;%s;%s" "$r" "$g" "$b"
+        printf "30;48;%s" "$code"
     else
-        printf "2;%s;%s;%s" "$r" "$g" "$b"
+        printf "%s" "$code"
     fi
 }
 
@@ -205,7 +216,7 @@ make_label() {
     if [[ -z $content ]]; then return 1; fi
 
     if $use_colors; then
-        printf "\001\033[38;%sm\002" "$(hex_to_ansi "$color")"
+        printf "\001\033[38;%sm\002" "$(color_to_ansi "$color")"
     fi
 
     printf "%b" "$content"
@@ -235,7 +246,7 @@ make_badge() {
     fi
 
     if $use_colors; then
-        ansi_sequence=$(hex_to_ansi "$color" true)
+        ansi_sequence=$(color_to_ansi "$color" true)
     else
         # Reverse video
         ansi_sequence=7
